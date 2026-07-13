@@ -109,9 +109,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
+## 🌐 Live Deployments
+
+*   **Live Frontend Application**: `https://your-stackchat-frontend.vercel.app` (Hosted on Vercel)
+*   **Live Backend API Server**: [https://stackchat-caiw.onrender.com](https://stackchat-caiw.onrender.com) (Hosted on Render)
+*   **Keep-Alive Ping Endpoint**: [https://stackchat-caiw.onrender.com/ping](https://stackchat-caiw.onrender.com/ping) (Configure on UptimeRobot to prevent Render free-tier sleep cycles)
+
+---
+
 ## 🌐 Production Deployment Outline
 
 *   **Frontend Delivery**: Deploy the Next.js application to **Vercel** or **Cloudflare Pages** for global CDN delivery.
-*   **Compute Node (WebSocket backend)**: Deploy the Node.js server container to **Northflank (Sandbox)** or **Fly.io** always-on instances. Avoid serverless functions for the real-time node to prevent cold starts and WebSocket limits.
-*   **Database**: Managed **Aiven PostgreSQL** (lifetime free tier, dedicated VM).
-*   **In-Memory Backplane**: **Upstash Redis** (serverless Redis with native TCP connection support, 256MB free tier).
+*   **Compute Node (WebSocket backend)**: Deploy the Node.js server container to **Render** always-on web services.
+*   **Database**: Managed **Supabase PostgreSQL** (free tier connection pooler).
+*   **In-Memory Backplane**: **Upstash Redis** (serverless Redis with native TCP connection support, free tier).
