@@ -43,6 +43,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Lightweight Keep-Alive Ping for Free-Tier Cron Jobs (e.g. UptimeRobot)
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
 // Port and server initialization
 const PORT = process.env.PORT || 5000;
 
