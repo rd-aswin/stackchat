@@ -16,6 +16,12 @@ export const metadata = {
   description: "Production-grade, horizontally scalable real-time chat application dashboard built with Socket.IO, Redis, and PostgreSQL.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${inter.variable} ${geist.variable}`} suppressHydrationWarning>
