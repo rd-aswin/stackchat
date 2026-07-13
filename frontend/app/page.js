@@ -23,7 +23,7 @@ import {
 
 // API endpoints Configuration
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "");
-const SOCKET_URL = (process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000").replace(/\/$/, "");
+const SOCKET_URL = (process.env.NEXT_PUBLIC_SOCKET_URL || API_BASE).replace(/\/$/, "");
 
 export default function Home() {
   // Authentication states
