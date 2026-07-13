@@ -1017,7 +1017,9 @@ pre.code-block {
    ========================================================================== */
 
 /* Default desktop state for mobile-specific elements */
-.mobile-back-btn {
+.mobile-back-btn,
+.mobile-menu-btn,
+.mobile-sidebar-close-btn {
   display: none;
 }
 
@@ -1060,7 +1062,8 @@ pre.code-block {
 
 /* 3. Mobile and Large Mobile (max-width: 767px) */
 @media (max-width: 767px) {
-  .mobile-back-btn {
+  .mobile-back-btn,
+  .mobile-menu-btn {
     display: flex;
     margin-right: 12px;
     color: var(--text-muted);
@@ -1070,6 +1073,27 @@ pre.code-block {
   .sidebar {
     width: 100% !important;
     border-right: none;
+    transition: transform 0.25s ease;
+  }
+
+  /* Support sliding sidebar drawer overlay when toggled on mobile */
+  .sidebar.mobile-open {
+    display: flex !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: var(--sidebar-width) !important;
+    max-width: 85%;
+    z-index: 100;
+    box-shadow: 10px 0 25px rgba(0, 0, 0, 0.25);
+    background-color: var(--secondary);
+    animation: slideIn 0.25s ease-out;
+  }
+
+  .sidebar.mobile-open .mobile-sidebar-close-btn {
+    display: flex !important;
+    color: rgba(255, 255, 255, 0.6);
   }
 
   .chat-area {
@@ -1085,6 +1109,11 @@ pre.code-block {
   /* Toggle active chat state */
   .app-container.has-active-chat .sidebar {
     display: none !important;
+  }
+
+  /* Keep mobile open drawer active even if there is an active chat */
+  .app-container.has-active-chat .sidebar.mobile-open {
+    display: flex !important;
   }
 
   .app-container.has-active-chat .chat-area {

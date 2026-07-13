@@ -19,7 +19,8 @@ import {
   User,
   Check,
   CheckCheck,
-  ArrowLeft
+  ArrowLeft,
+  Menu
 } from "lucide-react";
 
 // API endpoints Configuration
@@ -38,6 +39,7 @@ export default function Home() {
   // Chat core states
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [messages, setMessages] = useState({}); // conversationId -> array of messages
   const [composerText, setComposerText] = useState("");
   const [isCodeMode, setIsCodeMode] = useState(false);
@@ -452,6 +454,7 @@ export default function Home() {
 
   const handleSelectConversation = (conv) => {
     setActiveConversation(conv);
+    setMobileSidebarOpen(false);
     
     // Instantly clear unread badge locally for highly responsive feel
     setConversations((prevConvs) =>
@@ -754,14 +757,23 @@ export default function Home() {
   return (
     <div className={`app-container ${activeConversation ? "has-active-chat" : ""}`} suppressHydrationWarning>
       {/* 1. SIDEBAR */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${mobileSidebarOpen ? "mobile-open" : ""}`}>
         <div className="sidebar-header">
           <div className="brand">
             <MessageSquare size={20} className="text-primary" />
             <span>StackChat</span>
           </div>
-          <div className="node-badge" title="Active Connection Node">
-            {socketConnected ? socketNode : "Offline"}
+          <div className="sidebar-header-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="node-badge" title="Active Connection Node">
+              {socketConnected ? socketNode : "Offline"}
+            </div>
+            <button
+              className="btn-icon mobile-sidebar-close-btn"
+              onClick={() => setMobileSidebarOpen(false)}
+              title="Close sidebar"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
 
@@ -872,6 +884,13 @@ export default function Home() {
                 title="Back to conversations"
               >
                 <ArrowLeft size={18} />
+              </button>
+              <button
+                className="btn-icon mobile-menu-btn"
+                onClick={() => setMobileSidebarOpen(true)}
+                title="Open channels list"
+              >
+                <Menu size={18} />
               </button>
               <div className="chat-title-info">
                 <span className="chat-title">{getRoomName(activeConversation)}</span>
