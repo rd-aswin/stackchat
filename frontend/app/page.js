@@ -235,6 +235,34 @@ export default function Home() {
       }
     });
 
+    // Handle real-time conversation deletion
+    socket.on("conversation_deleted", (data) => {
+      const { conversationId } = data;
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      setActiveConversation((prev) => (prev && prev.id === conversationId ? null : prev));
+    });
+
+    // Handle leaving conversations
+    socket.on("conversation_left", (data) => {
+      const { conversationId } = data;
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      setActiveConversation((prev) => (prev && prev.id === conversationId ? null : prev));
+    });
+
+    // Handle updates to conversation participants list
+    socket.on("participants_updated", (data) => {
+      const { conversationId, room } = data;
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conversationId ? { ...c, participants: room.participants } : c))
+      );
+      setActiveConversation((prev) => {
+        if (prev && prev.id === conversationId) {
+          return { ...prev, participants: room.participants };
+        }
+        return prev;
+      });
+    });
+
     // Setup heartbeat check every 10 seconds
     const heartbeatInterval = setInterval(() => {
       socket.emit("heartbeat");
@@ -610,6 +638,93 @@ export default function Home() {
 
     setComposerText("");
     setIsCodeMode(false);
+  };
+
+  // Delete an entire conversation (DMs or Streams)
+  const handleDeleteConversation = async (conversationId) => {
+    if (!confirm("Are you sure you want to delete this conversation? This will permanently erase all history for all participants.")) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat/conversations/${conversationId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Failed to delete conversation");
+        return;
+      }
+      
+      // Update local state
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      if (activeConversation && activeConversation.id === conversationId) {
+        setActiveConversation(null);
+      }
+    } catch (err) {
+      console.error("Delete conversation error:", err);
+      alert("Server error deleting conversation");
+    }
+  };
+
+  // Leave a group stream
+  const handleLeaveStream = async (conversationId) => {
+    if (!confirm("Are you sure you want to leave this stream?")) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat/conversations/${conversationId}/leave`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Failed to leave stream");
+        return;
+      }
+
+      // Update local state
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      if (activeConversation && activeConversation.id === conversationId) {
+        setActiveConversation(null);
+      }
+    } catch (err) {
+      console.error("Leave stream error:", err);
+      alert("Server error leaving stream");
+    }
+  };
+
+  // Add developers/users to a stream
+  const handleAddUsersToStream = async (conversationId, userIds) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/chat/conversations/${conversationId}/participants`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ userIds })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Failed to add users");
+        return;
+      }
+      
+      const updatedRoom = await res.json();
+      // Update local state
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conversationId ? updatedRoom : c))
+      );
+      if (activeConversation && activeConversation.id === conversationId) {
+        setActiveConversation(updatedRoom);
+      }
+    } catch (err) {
+      console.error("Add users error:", err);
+      alert("Server error adding users");
+    }
   };
 
   // Format timestamp nicely
@@ -1061,36 +1176,99 @@ export default function Home() {
               <X size={18} />
             </button>
           </header>
-          <div className="panel-content">
-            <div>
-              <div className="info-section-title">About</div>
-              <div className="info-box">
-                <div className="info-desc">
-                  {activeConversation.type === "DIRECT"
-                    ? `One-to-One private conversation room.`
-                    : `Incident response channel for real-time infrastructure discussion and telemetry updates.`}
+          <div className="panel-content" style={{ display: "flex", flexDirection: "column", height: "calc(100% - var(--header-height))" }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "24px", overflowY: "auto" }}>
+              <div>
+                <div className="info-section-title">About</div>
+                <div className="info-box">
+                  <div className="info-desc">
+                    {activeConversation.type === "DIRECT"
+                      ? `One-to-One private conversation room.`
+                      : `Incident response channel for real-time infrastructure discussion and telemetry updates.`}
+                  </div>
                 </div>
               </div>
+
+              <div>
+                <div className="info-section-title">Participants ({activeConversation.participants?.length || 0})</div>
+                <div className="participant-list">
+                  {activeConversation.participants?.map((p) => {
+                    const isOnline = presence[p.id] === "online";
+                    return (
+                      <div key={p.id} className="participant-item">
+                        <div className="participant-profile">
+                          <span className={`presence-indicator ${isOnline ? "online" : ""}`} />
+                          <span className="participant-name">{p.username}</span>
+                          {p.username === currentUser.username && (
+                            <span className="badge-admin-tag" style={{ marginLeft: "4px" }}>You</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {activeConversation.type === "GROUP" && (
+                <div>
+                  <div className="info-section-title">Add Developers</div>
+                  {(() => {
+                    const participantIds = new Set(activeConversation.participants?.map((p) => p.id));
+                    const addableUsers = usersList.filter((u) => !participantIds.has(u.id));
+                    if (addableUsers.length === 0) {
+                      return <div className="info-desc" style={{ fontStyle: "italic" }}>All developers joined this stream.</div>;
+                    }
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <select
+                          className="form-input"
+                          style={{ padding: "8px" }}
+                          value=""
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) {
+                              handleAddUsersToStream(activeConversation.id, [val]);
+                            }
+                          }}
+                        >
+                          <option value="" disabled>Select developer to add...</option>
+                          {addableUsers.map((u) => (
+                            <option key={u.id} value={u.id}>{u.username}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
-            <div>
-              <div className="info-section-title">Participants ({activeConversation.participants?.length || 0})</div>
-              <div className="participant-list">
-                {activeConversation.participants?.map((p) => {
-                  const isOnline = presence[p.id] === "online";
-                  return (
-                    <div key={p.id} className="participant-item">
-                      <div className="participant-profile">
-                        <span className={`presence-indicator ${isOnline ? "online" : ""}`} />
-                        <span className="participant-name">{p.username}</span>
-                        {p.username === currentUser.username && (
-                          <span className="badge-admin-tag" style={{ marginLeft: "4px" }}>You</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Danger Zone Actions */}
+            <div style={{ marginTop: "auto", paddingTop: "16px", display: "flex", flexDirection: "column", gap: "8px", borderTop: "1px solid var(--neutral-border)" }}>
+              {activeConversation.type === "GROUP" && (
+                <button
+                  className="btn-danger-outline"
+                  style={{ width: "100%", padding: "10px" }}
+                  onClick={() => handleLeaveStream(activeConversation.id)}
+                >
+                  Leave Stream
+                </button>
+              )}
+              {(activeConversation.type === "DIRECT" || currentUser.is_admin) && (
+                <button
+                  className="btn-danger-outline"
+                  style={{ 
+                    width: "100%", 
+                    padding: "10px", 
+                    backgroundColor: "rgba(239, 68, 68, 0.05)",
+                    border: "1px solid var(--danger)",
+                    color: "var(--danger)"
+                  }}
+                  onClick={() => handleDeleteConversation(activeConversation.id)}
+                >
+                  Delete Conversation
+                </button>
+              )}
             </div>
           </div>
         </aside>

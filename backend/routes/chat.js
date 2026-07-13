@@ -211,4 +211,198 @@ router.get('/users', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete a conversation (cascades to messages and participants)
+router.delete('/conversations/:id', authMiddleware, async (req, res) => {
+  const conversationId = req.params.id;
+  const userId = req.user.id;
+
+  try {
+    // Verify user is a participant
+    const check = await db.query(
+      'SELECT 1 FROM participants WHERE conversation_id = $1 AND user_id = $2',
+      [conversationId, userId]
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ error: 'You are not a participant in this conversation' });
+    }
+
+    // Get conversation details to check type
+    const convRes = await db.query('SELECT type FROM conversations WHERE id = $1', [conversationId]);
+    if (convRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const convType = convRes.rows[0].type;
+    if (convType === 'GROUP' && !req.user.is_admin) {
+      return res.status(403).json({ error: 'Only administrators can delete streams' });
+    }
+
+    // Get all participant IDs before deleting, to notify them via socket
+    const participantsRes = await db.query(
+      'SELECT user_id FROM participants WHERE conversation_id = $1',
+      [conversationId]
+    );
+    const participantIds = participantsRes.rows.map(r => r.user_id);
+
+    // Delete the conversation
+    await db.query('DELETE FROM conversations WHERE id = $1', [conversationId]);
+
+    // Broadcast socket event to all members
+    const io = req.app.get('io');
+    if (io) {
+      participantIds.forEach(pId => {
+        io.to(pId).emit('conversation_deleted', { conversationId });
+      });
+    }
+
+    res.json({ success: true, message: 'Conversation deleted successfully' });
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    res.status(500).json({ error: 'Server error deleting conversation' });
+  }
+});
+
+// Leave a stream (group conversation)
+router.post('/conversations/:id/leave', authMiddleware, async (req, res) => {
+  const conversationId = req.params.id;
+  const userId = req.user.id;
+
+  try {
+    // Verify user is a participant and it is a GROUP conversation
+    const convRes = await db.query(
+      `SELECT c.type, c.name 
+       FROM conversations c
+       JOIN participants p ON p.conversation_id = c.id
+       WHERE c.id = $1 AND p.user_id = $2`,
+      [conversationId, userId]
+    );
+
+    if (convRes.rows.length === 0) {
+      return res.status(403).json({ error: 'You are not a participant in this conversation' });
+    }
+
+    const conv = convRes.rows[0];
+    if (conv.type !== 'GROUP') {
+      return res.status(400).json({ error: 'You can only leave group stream conversations' });
+    }
+
+    // Remove participant
+    await db.query(
+      'DELETE FROM participants WHERE conversation_id = $1 AND user_id = $2',
+      [conversationId, userId]
+    );
+
+    // Fetch other participants to notify them
+    const participantsRes = await db.query(
+      'SELECT user_id FROM participants WHERE conversation_id = $1',
+      [conversationId]
+    );
+    const otherIds = participantsRes.rows.map(r => r.user_id);
+
+    // Broadcast socket update
+    const io = req.app.get('io');
+    if (io) {
+      // Notify the leaving user
+      io.to(userId).emit('conversation_left', { conversationId });
+
+      // Notify remaining participants to update participant list
+      otherIds.forEach(pId => {
+        io.to(pId).emit('participants_updated', {
+          conversationId,
+          room: {
+            id: conversationId,
+            type: 'GROUP',
+            name: conv.name,
+            participants: otherIds.map(oId => ({ id: oId })) // Lightweight update or trigger full fetch
+          }
+        });
+      });
+    }
+
+    res.json({ success: true, message: 'Successfully left the stream' });
+  } catch (error) {
+    console.error('Leave stream error:', error);
+    res.status(500).json({ error: 'Server error leaving stream' });
+  }
+});
+
+// Add users to a stream (group conversation)
+router.post('/conversations/:id/participants', authMiddleware, async (req, res) => {
+  const conversationId = req.params.id;
+  const { userIds } = req.body;
+  const currentUserId = req.user.id;
+
+  if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({ error: 'Invalid user IDs list' });
+  }
+
+  try {
+    // Verify active user is a participant and it is a GROUP conversation
+    const convRes = await db.query(
+      `SELECT c.id, c.name, c.type, c.created_at
+       FROM conversations c
+       JOIN participants p ON p.conversation_id = c.id
+       WHERE c.id = $1 AND p.user_id = $2`,
+      [conversationId, currentUserId]
+    );
+
+    if (convRes.rows.length === 0) {
+      return res.status(403).json({ error: 'You are not a participant in this conversation' });
+    }
+
+    const conv = convRes.rows[0];
+    if (conv.type !== 'GROUP') {
+      return res.status(400).json({ error: 'You can only add users to group stream conversations' });
+    }
+
+    // Insert new participants
+    for (const uId of userIds) {
+      await db.query(
+        `INSERT INTO participants (conversation_id, user_id, last_delivered_seq, last_read_seq)
+         VALUES ($1, $2, 0, 0)
+         ON CONFLICT (conversation_id, user_id) DO NOTHING`,
+        [conversationId, uId]
+      );
+    }
+
+    // Fetch the fully populated conversation details
+    const fullConvDetails = await db.query(
+      `SELECT c.id, c.name, c.type, c.created_at,
+              (
+                SELECT json_agg(json_build_object('id', u.id, 'username', u.username, 'last_read_seq', p2.last_read_seq))
+                FROM participants p2
+                JOIN users u ON u.id = p2.user_id
+                WHERE p2.conversation_id = c.id
+              ) as participants,
+              COALESCE((SELECT MAX(sequence_id) FROM messages m WHERE m.conversation_id = c.id), 0) as max_sequence_id
+       FROM conversations c
+       WHERE c.id = $1`,
+      [conversationId]
+    );
+
+    const updatedRoom = fullConvDetails.rows[0];
+
+    // Get all current participant IDs
+    const allParticipantsRes = await db.query(
+      'SELECT user_id FROM participants WHERE conversation_id = $1',
+      [conversationId]
+    );
+    const allParticipantIds = allParticipantsRes.rows.map(r => r.user_id);
+
+    // Broadcast socket update
+    const io = req.app.get('io');
+    if (io) {
+      allParticipantIds.forEach(pId => {
+        io.to(pId).emit('conversation_created', updatedRoom);
+        io.to(pId).emit('participants_updated', { conversationId, room: updatedRoom });
+      });
+    }
+
+    res.json(updatedRoom);
+  } catch (error) {
+    console.error('Add participants error:', error);
+    res.status(500).json({ error: 'Server error adding participants' });
+  }
+});
+
 module.exports = router;
