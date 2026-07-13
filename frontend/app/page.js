@@ -879,13 +879,6 @@ export default function Home() {
             {/* Chat Area Header */}
             <header className="chat-header">
               <button
-                className="btn-icon mobile-back-btn"
-                onClick={() => setActiveConversation(null)}
-                title="Back to conversations"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <button
                 className="btn-icon mobile-menu-btn"
                 onClick={() => setMobileSidebarOpen(true)}
                 title="Open channels list"
@@ -1057,8 +1050,16 @@ export default function Home() {
       {/* 3. DETAILS SIDE PANEL (Rightmost panel) */}
       {activeConversation && showDetailPanel && (
         <aside className="detail-panel">
-          <header className="panel-header">
+          <header className="panel-header" style={{ display: "flex", justifyItems: "center", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
             <span className="panel-title">Room Details</span>
+            <button
+              className="btn-icon mobile-detail-close-btn"
+              onClick={() => setShowDetailPanel(false)}
+              title="Close details"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <X size={18} />
+            </button>
           </header>
           <div className="panel-content">
             <div>

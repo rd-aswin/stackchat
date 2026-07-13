@@ -1019,7 +1019,8 @@ pre.code-block {
 /* Default desktop state for mobile-specific elements */
 .mobile-back-btn,
 .mobile-menu-btn,
-.mobile-sidebar-close-btn {
+.mobile-sidebar-close-btn,
+.mobile-detail-close-btn {
   display: none;
 }
 
@@ -1058,11 +1059,14 @@ pre.code-block {
     background-color: #ffffff;
     animation: slideIn 0.25s ease-out;
   }
+
+  .mobile-detail-close-btn {
+    display: flex !important;
+  }
 }
 
 /* 3. Mobile and Large Mobile (max-width: 767px) */
 @media (max-width: 767px) {
-  .mobile-back-btn,
   .mobile-menu-btn {
     display: flex;
     margin-right: 12px;
