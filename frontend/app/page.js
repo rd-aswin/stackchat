@@ -1254,7 +1254,7 @@ export default function Home() {
                   Leave Stream
                 </button>
               )}
-              {(activeConversation.type === "DIRECT" || currentUser.is_admin) && (
+              {activeConversation.type === "DIRECT" && (
                 <button
                   className="btn-danger-outline"
                   style={{ 
