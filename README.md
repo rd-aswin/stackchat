@@ -111,7 +111,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 🌐 Live Deployments
 
-*   **Live Frontend Application**: `https://your-stackchat-frontend.vercel.app` (Hosted on Vercel)
+*   **Live Frontend Application**: [https://stackchat-theta.vercel.app](https://stackchat-theta.vercel.app) (Hosted on Vercel)
 *   **Live Backend API Server**: [https://stackchat-caiw.onrender.com](https://stackchat-caiw.onrender.com) (Hosted on Render)
 *   **Keep-Alive Ping Endpoint**: [https://stackchat-caiw.onrender.com/ping](https://stackchat-caiw.onrender.com/ping) (Configure on UptimeRobot to prevent Render free-tier sleep cycles)
 
