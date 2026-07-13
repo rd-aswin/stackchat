@@ -18,7 +18,8 @@ import {
   Server,
   User,
   Check,
-  CheckCheck
+  CheckCheck,
+  ArrowLeft
 } from "lucide-react";
 
 // API endpoints Configuration
@@ -751,7 +752,7 @@ export default function Home() {
   });
 
   return (
-    <div className="app-container" suppressHydrationWarning>
+    <div className={`app-container ${activeConversation ? "has-active-chat" : ""}`} suppressHydrationWarning>
       {/* 1. SIDEBAR */}
       <aside className="sidebar">
         <div className="sidebar-header">
@@ -865,6 +866,13 @@ export default function Home() {
           <>
             {/* Chat Area Header */}
             <header className="chat-header">
+              <button
+                className="btn-icon mobile-back-btn"
+                onClick={() => setActiveConversation(null)}
+                title="Back to conversations"
+              >
+                <ArrowLeft size={18} />
+              </button>
               <div className="chat-title-info">
                 <span className="chat-title">{getRoomName(activeConversation)}</span>
                 <span className="chat-status">

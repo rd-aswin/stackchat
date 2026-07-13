@@ -1011,3 +1011,170 @@ pre.code-block {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ==========================================================================
+   RESPONSIVENESS & MOBILE-FIRST MEDIA QUERIES
+   ========================================================================== */
+
+/* Default desktop state for mobile-specific elements */
+.mobile-back-btn {
+  display: none;
+}
+
+/* Touch target enhancement for interactive elements across all resolutions */
+.btn-icon,
+.btn-composer-tool,
+.btn-send {
+  min-height: 40px;
+  min-width: 40px;
+}
+
+.sidebar-item {
+  min-height: 44px; /* Optimal tap targets for list selections */
+}
+
+/* 1. Large Desktop (1441px+) */
+@media (min-width: 1441px) {
+  .auth-card {
+    max-width: 460px;
+    padding: 48px;
+  }
+}
+
+/* 2. Tablet (max-width: 1024px) */
+@media (max-width: 1024px) {
+  /* Prevent Detail Panel from squeezing the chat window side-by-side */
+  .detail-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: var(--detailbar-width);
+    max-width: 100%;
+    z-index: 50;
+    box-shadow: -10px 0 25px rgba(0, 0, 0, 0.15);
+    background-color: #ffffff;
+    animation: slideIn 0.25s ease-out;
+  }
+}
+
+/* 3. Mobile and Large Mobile (max-width: 767px) */
+@media (max-width: 767px) {
+  .mobile-back-btn {
+    display: flex;
+    margin-right: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Core layout toggles between Sidebar and Active Chat area */
+  .sidebar {
+    width: 100% !important;
+    border-right: none;
+  }
+
+  .chat-area {
+    display: none !important;
+  }
+
+  /* Overlay Detail panel matches full viewport width on mobile */
+  .detail-panel {
+    width: 100% !important;
+    border-left: none;
+  }
+
+  /* Toggle active chat state */
+  .app-container.has-active-chat .sidebar {
+    display: none !important;
+  }
+
+  .app-container.has-active-chat .chat-area {
+    display: flex !important;
+    width: 100% !important;
+  }
+
+  /* Enhance message wrappers size for text density */
+  .message-wrapper {
+    max-width: 88%;
+  }
+
+  .chat-messages {
+    padding: 16px;
+  }
+
+  .chat-header {
+    padding: 0 16px;
+  }
+
+  .message-composer {
+    padding: 12px 16px 16px 16px;
+  }
+
+  /* Admin Modal fullscreen mode on mobile to fit content */
+  .admin-overlay {
+    padding: 0;
+  }
+
+  .admin-modal {
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+
+  .admin-header {
+    height: 64px;
+    padding: 0 16px;
+  }
+
+  .admin-content {
+    padding: 16px;
+  }
+
+  /* Responsive stats scaling */
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  /* Scrollable admin tables */
+  .admin-section {
+    padding: 16px;
+    overflow-x: auto;
+  }
+
+  .admin-table {
+    min-width: 500px; /* Force minimum width to trigger scrollbar instead of compression */
+  }
+
+  /* Auth UI Mobile optimizations */
+  .auth-card {
+    max-width: 90%;
+    padding: 24px;
+  }
+
+  .auth-title {
+    font-size: 24px;
+  }
+}
+
+/* 4. Small Mobile (max-width: 480px) */
+@media (max-width: 480px) {
+  .brand span {
+    font-size: 16px;
+  }
+
+  /* Ensure long code snippets horizontal scroll comfortably */
+  pre.code-block {
+    font-size: 12px;
+    padding: 8px;
+    max-width: 100%;
+  }
+
+  /* Tap targets safety minimum padding */
+  .form-input {
+    padding: 14px; /* Larger hit target for keyboard inputs */
+  }
+}
